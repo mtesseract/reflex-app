@@ -1,0 +1,4 @@
+.vscode
+result
+dist-newstyle
+.ghc.environment.*
