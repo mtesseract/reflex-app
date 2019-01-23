@@ -1,4 +1,4 @@
-{ lib, config, pkgs, modulesPath, ... }:
+{ modulesPath, ... }:
 
 let
   backend = ((import ../.) { system = "x86_64-linux"; }).ghc.backend;
