@@ -19,6 +19,6 @@ library
   exposed-modules:    Common
   -- other-modules:
   -- other-extensions:
-  build-depends:       base >=4.11 && <4.12
+  build-depends:       base >=4.11 && <4.12, aeson, text, bytestring
   hs-source-dirs:      src
   default-language:    Haskell2010

@@ -17,6 +17,8 @@ import Servant
 import Control.Monad.Reader
 import Data.Aeson
 
+import Common
+
 data Config = Config { dbHost :: Text, dbUsername :: Text, dbDatabase :: Text, dbPassword :: Text }
     deriving (Generic, Show)
 
@@ -26,11 +28,6 @@ instance FromEnv Config where
 data AppContext = AppContext { dbConnection :: PG.Connection }
 
 type API = "users" :> Get '[JSON] [User]
-
-data User = User { userName :: Text } deriving (Generic, Eq)
-
-instance FromJSON User
-instance ToJSON User
 
 users :: [User]
 users = [User "foo"]

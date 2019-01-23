@@ -19,6 +19,6 @@ executable frontend
   main-is:             Main.hs
   -- other-modules:
   -- other-extensions:
-  build-depends:       base >=4.11 && <4.12, common, reflex-dom
+  build-depends:       base >=4.11 && <4.12, common, reflex-dom, data-default, aeson, text
   hs-source-dirs:      src
   default-language:    Haskell2010
