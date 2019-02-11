@@ -2,7 +2,8 @@
 
 let
   backend = ((import ../.) { system = "x86_64-linux"; }).ghc.backend;
-  frontend = ((import ../.) { system = "x86_64-linux"; }).ghcjs.frontend;
+  frontend = import ../frontend-browser { system = "x86_64-linux"; };
+  # ((import ../.) { system = "x86_64-linux"; }).ghcjs.frontend;
   networkConf = import ./network.nix;
   dnsConf = import ./dns.nix;
   sshKeys = import ./ssh.nix;
