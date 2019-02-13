@@ -44,6 +44,11 @@ in
           forceSSL = true;
           root = "${frontend}/bin/frontend.jsexe";
         };
+        appendConfig = ''
+          gzip_static  on;
+          gzip_proxied expired no-cache no-store private auth;
+
+        '';
         "${dnsConf.backend}" = {
           enableACME = true;
           forceSSL = true;

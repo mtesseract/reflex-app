@@ -6,6 +6,7 @@ let
   pkgs = nixpkgs.pkgs;
   stdenv = nixpkgs.stdenv;
   closurecompiler = pkgs.closurecompiler;
+  zopfli = pkgs.zopfli;
 in
   stdenv.mkDerivation {
       name = "frontend-js-minified";
@@ -13,4 +14,5 @@ in
       builder = ./builder.sh;
       inherit frontend;
       inherit closurecompiler;
+      inherit zopfli;
   }
