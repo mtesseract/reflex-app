@@ -3,7 +3,6 @@
 let
   backend = ((import ../.) { system = "x86_64-linux"; }).ghc.backend;
   frontend = import ../frontend-browser { system = "x86_64-linux"; };
-  # ((import ../.) { system = "x86_64-linux"; }).ghcjs.frontend;
   networkConf = import ./network.nix;
   dnsConf = import ./dns.nix;
   sshKeys = import ./ssh.nix;
@@ -43,12 +42,11 @@ in
           enableACME = true;
           forceSSL = true;
           root = "${frontend}/bin/frontend.jsexe";
+          extraConfig = ''
+            gzip_static on;
+            gzip_proxied expired no-cache no-store private auth;
+          '';
         };
-        appendConfig = ''
-          gzip_static  on;
-          gzip_proxied expired no-cache no-store private auth;
-
-        '';
         "${dnsConf.backend}" = {
           enableACME = true;
           forceSSL = true;
