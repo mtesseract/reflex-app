@@ -20,10 +20,12 @@ executable frontend
   default-extensions:  FlexibleContexts
                      , OverloadedStrings
                      , LambdaCase
+                     , ScopedTypeVariables
+                     , PartialTypeSignatures
   -- other-modules:
   -- other-extensions:
   ghc-options:         -dynamic -threaded
   build-depends:       base >=4.11 && <4.12, common, reflex-dom, data-default, aeson, text
-                     , jsaddle
+                     , jsaddle, ghcjs-dom, ghcjs-base
   hs-source-dirs:      src
   default-language:    Haskell2010

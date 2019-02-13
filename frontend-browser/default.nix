@@ -7,6 +7,7 @@ let
 in
   stdenv.mkDerivation {
       name = "frontend-browser";
+      src = ./.;
       buildInputs = [ frontendMin ];
       builder = ./builder.sh;
       inherit frontendMin;
