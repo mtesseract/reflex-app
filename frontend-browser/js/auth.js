@@ -1,23 +1,31 @@
 // auth.js
 
-window.addEventListener('load', function () {
-    var idToken;
-    var accessToken;
-    var expiresAt;
+class AppAuth {
+    constructor() {
+        this.webAuth = new auth0.WebAuth({
+            domain: 'mtesseract.eu.auth0.com',
+            clientID: '0isBmlwffqd7xTLg0voKLvR4LGGkMbNQ',
+            responseType: 'token id_token',
+            scope: 'openid',
+            redirectUri: window.location.href
+        });
+    }
+}
 
-    var webAuth = new auth0.WebAuth({
-        domain: 'mtesseract.eu.auth0.com',
-        clientID: '0isBmlwffqd7xTLg0voKLvR4LGGkMbNQ',
-        responseType: 'token id_token',
-        scope: 'openid',
-        redirectUri: window.location.href
-    });
+appAuth = new AppAuth();
 
-    var loginBtn = document.getElementById('btn-login');
+// window.addEventListener('load', function () {
+//     var idToken;
+//     var accessToken;
+//     var expiresAt;
 
-    loginBtn.addEventListener('click', function (e) {
-        e.preventDefault();
-        webAuth.authorize();
-    });
+//     var webAuth = 
 
-});
+//     var loginBtn = document.getElementById('btn-login');
+
+//     loginBtn.addEventListener('click', function (e) {
+//         e.preventDefault();
+//         webAuth.authorize();
+//     });
+
+// });

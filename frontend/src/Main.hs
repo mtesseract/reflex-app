@@ -26,7 +26,7 @@ import Language.Javascript.JSaddle.Value
 import           Control.Monad.IO.Class
 import qualified Data.JSString                 as JSString
 
-foreign import javascript unsafe "webAuth.authorize()"
+foreign import javascript unsafe "appAuth.webAuth.authorize()"
   webAuthAuthorize :: IO ()
 
 data View = View1 | View2 deriving (Eq, Ord, Show)
@@ -50,6 +50,7 @@ main :: IO ()
 main = mainWidget $ el "div" $ do
   loc :: Location <- liftIO getWindowLocation
   startView <- getStartView loc
+
   buttonViewOne <- fmap (const View1) <$> button "View 1"
   buttonViewTwo <- fmap (const View2) <$> button "View 2"
   let changeView = selectView <$> leftmost [buttonViewOne, buttonViewTwo]
@@ -74,6 +75,7 @@ main = mainWidget $ el "div" $ do
        , MonadHold t m
        , PostBuild t m
        , MonadIO m
+       , PerformEvent t m
        )
     => View
     -> m ()
@@ -84,7 +86,10 @@ main = mainWidget $ el "div" $ do
       View2 -> view2
    where
 
-    view1 = text "Hello"
+    view1 = do
+      (buttonSignIn, _) <- elAttr' "button" ("id" =: "btn-login" <> "class" =: "btn btn-primary btn-margin") (text "Sign In")
+      let eventSignIn = (const (liftIO webAuthAuthorize)) <$> domEvent Click buttonSignIn
+      performEvent_ eventSignIn
 
     view2 = do
       buttonRetrieveUsers <- button "Retrieve users from DB"
