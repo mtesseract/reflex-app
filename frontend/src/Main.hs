@@ -27,12 +27,15 @@ import Language.Javascript.JSaddle.Value
 import           Control.Monad.IO.Class
 import qualified Data.JSString                 as JSString
 
-import GHCJS.Foreign.Callback (Callback, asyncCallback1)
+import GHCJS.Foreign.Callback (Callback, asyncCallback, asyncCallback1)
 import GHCJS.DOM.Text (unText)
 import Control.Monad (join)
 
 foreign import javascript unsafe "appAuth.webAuth.authorize()"
   webAuthAuthorize :: IO ()
+
+foreign import javascript unsafe "appAuth.signOut()"
+  signOut :: IO ()
 
 foreign import javascript unsafe "appAuth.tryRetrieveTokenFromURI()"
   tryRetrieveTokenFromURI :: IO ()
@@ -68,57 +71,84 @@ convertToText = pFromJSVal
 --     Just a -> pure a
 --     Nothing -> pure "failed to convert jsval to text"
 
-data AppCtx = AppCtx
+data AppState = AppState
   {
-    user :: Maybe Text
+    signedIn :: Bool
   }
 
-data AppEvent = UserSignedIn Text
+data AppEvent = UserSignedIn
               | UserSignedOut
     deriving (Eq, Show, Ord)
 
 main :: IO ()
 main = mainWidget $ el "div" $ do
-  loc :: Location <- liftIO getWindowLocation
-  (signInEvent, triggerSignInEvent :: JSVal -> IO ()) <- newTriggerEvent
-  (signOutEvent, triggerSignOutEvent :: () -> IO ()) <- newTriggerEvent
+  (signInEvent', triggerSignInEvent :: JSVal -> IO ()) <- newTriggerEvent
+  (signOutEvent', triggerSignOutEvent :: () -> IO ()) <- newTriggerEvent
 
   signInCallback <- liftIO $ asyncCallback1 triggerSignInEvent
-  signOutCallback <- liftIO asyncCallback
-
+  signOutCallback <- liftIO $ asyncCallback (triggerSignOutEvent ())
   liftIO $ registerSignInCallback signInCallback
   liftIO $ registerSignOutCallback signOutCallback
 
+  let signInEvent = (const UserSignedIn) <$> signInEvent'
+  let signOutEvent = (const UserSignedOut) <$> signOutEvent'
+      appEvent = leftmost [signInEvent, signOutEvent]
+  
   liftIO $ tryRetrieveTokenFromURI
-  let a = pToJSVal ("not authenticated" :: Text)
-  authDyn <- holdDyn a (signInEvent
-  let authDyn' = convertToText <$> authDyn
-  display authDyn'
+
+  dynamicAppState <- foldDyn transition (AppState False) appEvent
+
+  let dynamicAppView = renderState <$> dynamicAppState
+  dyn_ dynamicAppView
+
+  -- let a = pToJSVal ("not authenticated" :: Text)
+  -- -- authDyn <- holdDyn a (signInEvent
+  -- let authDyn' = convertToText <$> authDyn
+  -- display authDyn'
 
 
-  nonAuthView
-  startView <- getStartView loc
+  -- nonAuthView
 
-  buttonViewOne <- fmap (const View1) <$> button "View 1"
-  buttonViewTwo <- fmap (const View2) <$> button "View 2"
-  let changeView = selectView <$> leftmost [buttonViewOne, buttonViewTwo]
-  d <- holdDyn (selectView startView) changeView
-  dyn_ d
-  pure ()
 
  where
 
-  nonAuthView :: (PerformEvent t m, MonadIO m, DomBuilder t m, MonadIO (Performable m)) => m ()
+  renderState appState = do
+    case signedIn appState of
+      True -> authView
+      False -> nonAuthView
+
+  transition appEvent appState = case appEvent of
+    UserSignedIn -> appState { signedIn = True }
+    UserSignedOut -> appState { signedIn = False }
+
+  authView :: ( PerformEvent t m
+              , HasJSContext (Performable m)
+              , MonadHold t m
+              , TriggerEvent t m
+              , PostBuild t m
+              , MonadIO m, DomBuilder t m, MonadIO (Performable m)) => m ()
+  authView = do
+    loc :: Location <- liftIO getWindowLocation
+
+    (buttonSignOut, _) <- elAttr' "button" ("id" =: "btn-login" 
+                                            <> "class" =: "btn btn-primary btn-margin")
+                                           (text "Sign Out")
+    performEvent_ ((const (liftIO signOut)) <$> domEvent Click buttonSignOut)
+    buttonViewOne <- fmap (const View1) <$> button "View 1"
+    buttonViewTwo <- fmap (const View2) <$> button "View 2"
+    let changeView = selectView <$> leftmost [buttonViewOne, buttonViewTwo]
+    startView <- getStartView loc
+    d <- holdDyn (selectView startView) changeView
+    dyn_ d
+
+  
+  nonAuthView :: ( PerformEvent t m
+                 , MonadIO m, DomBuilder t m, MonadIO (Performable m)) => m ()
   nonAuthView  = do
     (buttonSignIn, _) <- elAttr' "button" ("id" =: "btn-login" 
                                            <> "class" =: "btn btn-primary btn-margin")
                                           (text "Sign In")
-    let eventSignIn = (const (liftIO webAuthAuthorize)) <$> domEvent Click buttonSignIn
-    performEvent_ eventSignIn
-    -- pure ()
-
-  authView name = do
-    text ("auth view; name = " <> name)
+    performEvent_ ((const (liftIO webAuthAuthorize)) <$> domEvent Click buttonSignIn)
 
   pushToHistory :: (MonadDOM m, MonadIO m) => View -> m ()
   pushToHistory view = do
