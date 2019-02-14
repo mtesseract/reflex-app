@@ -10,6 +10,7 @@ import           Data.Text                      ( Text )
 import           Common                         ( User )
 import           Language.Javascript.JSaddle
 import           Reflex.Dom.Widget.Basic
+import GHCJS.Nullable
 
 import GHCJS.DOM.Types (MonadDOM)
 import qualified GHCJS.DOM as DOM
@@ -26,8 +27,21 @@ import Language.Javascript.JSaddle.Value
 import           Control.Monad.IO.Class
 import qualified Data.JSString                 as JSString
 
+import GHCJS.Foreign.Callback (Callback, asyncCallback1)
+import GHCJS.DOM.Text (unText)
+import Control.Monad (join)
+
 foreign import javascript unsafe "appAuth.webAuth.authorize()"
   webAuthAuthorize :: IO ()
+
+foreign import javascript unsafe "appAuth.tryRetrieveTokenFromURI()"
+  tryRetrieveTokenFromURI :: IO ()
+
+foreign import javascript unsafe "appAuth.registerSignInCallback($1)"
+  registerSignInCallback :: Callback (JSVal -> IO ()) -> IO ()
+
+foreign import javascript unsafe "appAuth.registerSignOutCallback($1)"
+  registerSignOutCallback :: Callback (IO ()) -> IO ()
 
 data View = View1 | View2 deriving (Eq, Ord, Show)
 
@@ -36,19 +50,53 @@ getStartView location = do
   path :: Text <- textFromJSString <$> liftIO (getPathname location)
   pure (pathToView path)
   
-  where pathToView = \case
-          "/view1" -> View1
-          "/view2" -> View2
-          _ -> View1
+pathToView = \case
+  "/view1" -> View1
+  "/view2" -> View2
+  _ -> View1
 
 viewToPath :: View -> Text
 viewToPath = \case
   View1 -> "/view1"
   View2 -> "/view2"
 
+convertToText :: JSVal -> Text
+convertToText = pFromJSVal
+-- convertToText :: MonadIO m => JSVal -> m Text
+-- convertToText jsval = liftIO $
+--   fromJSVal jsval >>= \case
+--     Just a -> pure a
+--     Nothing -> pure "failed to convert jsval to text"
+
+data AppCtx = AppCtx
+  {
+    user :: Maybe Text
+  }
+
+data AppEvent = UserSignedIn Text
+              | UserSignedOut
+    deriving (Eq, Show, Ord)
+
 main :: IO ()
 main = mainWidget $ el "div" $ do
   loc :: Location <- liftIO getWindowLocation
+  (signInEvent, triggerSignInEvent :: JSVal -> IO ()) <- newTriggerEvent
+  (signOutEvent, triggerSignOutEvent :: () -> IO ()) <- newTriggerEvent
+
+  signInCallback <- liftIO $ asyncCallback1 triggerSignInEvent
+  signOutCallback <- liftIO asyncCallback
+
+  liftIO $ registerSignInCallback signInCallback
+  liftIO $ registerSignOutCallback signOutCallback
+
+  liftIO $ tryRetrieveTokenFromURI
+  let a = pToJSVal ("not authenticated" :: Text)
+  authDyn <- holdDyn a (signInEvent
+  let authDyn' = convertToText <$> authDyn
+  display authDyn'
+
+
+  nonAuthView
   startView <- getStartView loc
 
   buttonViewOne <- fmap (const View1) <$> button "View 1"
@@ -59,6 +107,18 @@ main = mainWidget $ el "div" $ do
   pure ()
 
  where
+
+  nonAuthView :: (PerformEvent t m, MonadIO m, DomBuilder t m, MonadIO (Performable m)) => m ()
+  nonAuthView  = do
+    (buttonSignIn, _) <- elAttr' "button" ("id" =: "btn-login" 
+                                           <> "class" =: "btn btn-primary btn-margin")
+                                          (text "Sign In")
+    let eventSignIn = (const (liftIO webAuthAuthorize)) <$> domEvent Click buttonSignIn
+    performEvent_ eventSignIn
+    -- pure ()
+
+  authView name = do
+    text ("auth view; name = " <> name)
 
   pushToHistory :: (MonadDOM m, MonadIO m) => View -> m ()
   pushToHistory view = do
@@ -87,9 +147,7 @@ main = mainWidget $ el "div" $ do
    where
 
     view1 = do
-      (buttonSignIn, _) <- elAttr' "button" ("id" =: "btn-login" <> "class" =: "btn btn-primary btn-margin") (text "Sign In")
-      let eventSignIn = (const (liftIO webAuthAuthorize)) <$> domEvent Click buttonSignIn
-      performEvent_ eventSignIn
+      text "view 1"
 
     view2 = do
       buttonRetrieveUsers <- button "Retrieve users from DB"
