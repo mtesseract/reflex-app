@@ -24,7 +24,7 @@ executable frontend
                      , PartialTypeSignatures
   -- other-modules:
   -- other-extensions:
-  ghc-options:         -threaded
+  ghc-options:         -threaded -Wall
   build-depends:       base >=4.11 && <4.12, common, reflex-dom, data-default, aeson, text
                      , jsaddle, ghcjs-dom, ghcjs-base
   hs-source-dirs:      src

@@ -5,7 +5,8 @@ class AppAuth {
         var self = this;
         self.webAuth = new auth0.WebAuth({
             domain: 'mtesseract.eu.auth0.com',
-            clientID: '0isBmlwffqd7xTLg0voKLvR4LGGkMbNQ',
+            audience: 'https://api.silverratio.net',
+            clientID: 'tkXZLxmZ3tZ2OAXhISzhd02lxdOZxYnJ',
             responseType: 'token id_token',
             scope: 'openid profile email',
             redirectUri: window.location.href
@@ -30,7 +31,7 @@ class AppAuth {
                             console.log("user object null");
                         } else {
                             console.log(user);
-                            self.signInCallback(user.name);
+                            self.signInCallback(authResult);
                         }
                     });
                 }
