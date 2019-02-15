@@ -27,6 +27,7 @@ executable backend
                      , envy
                      , servant
                      , servant-server
+                     , servant-auth
                      , wai
                      , warp
                      , aeson

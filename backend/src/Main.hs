@@ -17,6 +17,9 @@ import Servant
 import Control.Monad.Reader
 import Data.Aeson
 
+import Servant.Auth.Server
+import Web.JWT
+
 import Common
 
 data Config = Config { dbHost :: Text, dbUsername :: Text, dbDatabase :: Text, dbPassword :: Text }
@@ -27,12 +30,12 @@ instance FromEnv Config where
 
 data AppContext = AppContext { dbConnection :: PG.Connection }
 
-type API = "users" :> Get '[JSON] [User]
+type API = Auth [JWTAuth] () :>  "users" :> Get '[JSON] [User]
 
 users :: [User]
 users = [User "foo"]
 
-usersGet :: ReaderT AppContext Handler [User]
+usersGet :: AuthResult () -> ReaderT AppContext Handler [User]
 usersGet = do
     AppContext { .. } <- ask
     userNames <- liftIO $ PG.query_ dbConnection "SELECT NAME FROM users"
