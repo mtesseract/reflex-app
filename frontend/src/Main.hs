@@ -93,12 +93,6 @@ extractAuth obj = do
     let auth = AuthState { idToken = myIdToken, accessToken = myAccessToken }
     pure $ UserSignedIn auth
 
--- convertToText :: MonadIO m => JSVal -> m Text
--- convertToText jsval = liftIO $
---   fromJSVal jsval >>= \case
---     Just a -> pure a
---     Nothing -> pure "failed to convert jsval to text"
-
 data AppState = Unauthenticated
               | Authenticated AuthState
   deriving (Eq, Show, Ord)
@@ -132,15 +126,6 @@ main = mainWidget $ el "div" $ do
 
   let dynamicAppView = renderState <$> dynamicAppState
   dyn_ dynamicAppView
-
-  -- let a = pToJSVal ("not authenticated" :: Text)
-  -- -- authDyn <- holdDyn a (signInEvent
-  -- let authDyn' = convertToText <$> authDyn
-  -- display authDyn'
-
-
-  -- nonAuthView
-
 
  where
 
