@@ -1,9 +1,14 @@
 module TokenValidation 
-    ( TokenValidationError(..)
-    , TokenValidator
-    , new
-    , validateToken
+    ( decodeJWK
+    , Client(..)
     ) where
+    -- ( TokenValidationError(..)
+    -- , TokenValidator
+    -- , new
+    -- , newWithJwk
+    -- , validateToken
+    -- , Client
+    -- ) where
 
 import qualified Data.Aeson as Aeson
 import qualified Crypto.JOSE as JOSE
@@ -25,52 +30,71 @@ import Control.Monad.Except (MonadError(..), ExceptT, runExceptT, withExceptT, l
 import Control.Arrow ((>>>))
 import Control.Monad (join, void)
 
+import Control.Lens
+
+import GHC.Generics
 import Control.Monad.Catch
+
+import Servant.Auth.Server (AuthResult(..), AuthResult(..), Auth, JWT, ToJWT(..), FromJWT(..), JWTSettings, CookieSettings, defaultJWTSettings, defaultCookieSettings)
+
+data Client = Client { subject :: String }
+   deriving (Eq, Show, Read, Generic)
+
+instance ToJWT Client where
+    encodeJWT (Client { .. }) = JWT.emptyClaimsSet & JWT.claimSub .~ Just "FIXME"
+
+instance FromJWT Client where
+    decodeJWT claims = case claims ^. JWT.claimSub of
+        Just sub -> Right (Client { subject = "FIXME" })
+        Nothing -> Left "Missing subject in JWT ClaimsSet"
 
 -- | Can throw TokenValidationError.
 decodeJWK :: MonadThrow m => Text -> m JOSE.JWK
 decodeJWK =
     Text.encodeUtf8
     >>> Aeson.eitherDecodeStrict
-    >>> either (throwM . InvalidJWK . Text.pack) pure
+    >>> either (undefined) pure
 
--- | Can throw TokenValidationError
-decodeJWT :: MonadThrow m => Text -> m JWT.SignedJWT
-decodeJWT = 
-    Text.encodeUtf8
-    >>> LByteString.fromStrict
-    >>> runExceptT . JOSE.Compact.decodeCompact
-    >>> fmap (either (throwM . JWTError) pure)
-    >>> join
+-- -- | Can throw TokenValidationError
+-- decodeJWT :: MonadThrow m => Text -> m JWT.SignedJWT
+-- decodeJWT = 
+--     Text.encodeUtf8
+--     >>> LByteString.fromStrict
+--     >>> runExceptT . JOSE.Compact.decodeCompact
+--     >>> fmap (either (throwM . JWTError) pure)
+--     >>> join
 
-validateJWT :: (MonadThrow m, MonadTime m) => JOSE.JWK -> JWT.SignedJWT -> m JWT.ClaimsSet
-validateJWT jwk jwt = do
-    runExceptT (JWT.verifyClaims settings jwk jwt) >>= \case
-        Right claims -> pure claims
-        Left err -> throwM (JWTError err)
+-- validateJWT :: (MonadThrow m, MonadTime m) => JOSE.JWK -> JWT.SignedJWT -> m JWT.ClaimsSet
+-- validateJWT jwk jwt = do
+--     runExceptT (JWT.verifyClaims settings jwk jwt) >>= \case
+--         Right claims -> pure claims
+--         Left err -> throwM (JWTError err)
 
-    where settings = JWT.defaultJWTValidationSettings (== "https://api.silverratio.net")
+--     where settings = JWT.defaultJWTValidationSettings (== "https://api.silverratio.net")
 
-data TokenValidator m =
-    TokenValidator { validate :: Text -> m () }
+-- data TokenValidator m =
+--     TokenValidator { validate :: Text -> m () }
 
-data TokenValidationError = InvalidJWK Text
-                          | JWTError JWT.JWTError
-    deriving (Eq, Show)
+-- data TokenValidationError = InvalidJWK Text
+--                           | JWTError JWT.JWTError
+--     deriving (Eq, Show)
 
-instance Exception TokenValidationError
+-- instance Exception TokenValidationError
 
-new :: (MonadThrow m, MonadThrow n, MonadTime n) => Text -> m (TokenValidator n)
-new jwkText = do
-    jwk <- decodeJWK jwkText
-    pure TokenValidator { validate = validate jwk }
+-- new :: (MonadThrow m, MonadThrow n, MonadTime n) => Text -> m (TokenValidator n)
+-- new jwkText = fst <$> newWithJwk jwkText
 
-    where
+-- newWithJwk :: (MonadThrow m, MonadThrow n, MonadTime n) => Text -> m (TokenValidator n, JWK)
+-- newWithJwk jwkText = do
+--     jwk <- decodeJWK jwkText
+--     pure (TokenValidator { validate = validate jwk }, jwk)
 
-    validate :: (MonadThrow m, MonadTime m) => JWK -> Text -> m ()
-    validate jwk token = do
-        jwtSigned <- decodeJWT token
-        void $ validateJWT jwk jwtSigned
+--     where
 
-validateToken :: (MonadThrow m, MonadTime m) => TokenValidator m -> Text -> m ()
-validateToken TokenValidator { .. } = validate
+--     validate :: (MonadThrow m, MonadTime m) => JWK -> Text -> m ()
+--     validate jwk token = do
+--         jwtSigned <- decodeJWT token
+--         void $ validateJWT jwk jwtSigned
+
+-- validateToken :: (MonadThrow m, MonadTime m) => TokenValidator m -> Text -> m ()
+-- validateToken TokenValidator { .. } = validate

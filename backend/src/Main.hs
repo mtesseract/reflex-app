@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DataKinds #-}
 
@@ -20,6 +19,7 @@ import Data.Aeson.Types
 import Data.Aeson.Casing
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as ByteString
+import Crypto.JOSE.JWK (JWK)
 
 import qualified Data.ByteString.Lazy as LByteString
 
@@ -28,12 +28,13 @@ import qualified Data.Text.Encoding as Text (encodeUtf8, decodeUtf8)
 import qualified Data.Text.Lazy.Encoding as LText (encodeUtf8, decodeUtf8)
 import qualified Data.Text.Lazy as LText (Text, fromStrict)
 
-import Servant.Auth
+import Servant.Auth.Server (AuthResult(..), AuthResult(..), Auth, JWT, ToJWT, FromJWT, JWTSettings, CookieSettings, defaultJWTSettings, defaultCookieSettings)
 
 import Common
 
-import qualified TokenValidation
-import TokenValidation (TokenValidator)
+import TokenValidation
+-- import qualified TokenValidation
+-- import TokenValidation (TokenValidator)
 
 data EnvConfig = EnvConfig
     { envConfigDbHost :: Text
@@ -54,16 +55,13 @@ instance FromEnv EnvConfig where
 data AppContext =
     AppContext
     { dbConnection :: PG.Connection
-    , tokenValidator :: TokenValidator IO
+    -- , tokenValidator :: TokenValidator IO
     }
 
-type API = "users" :> Get '[JSON] [User]
+type API = Auth '[JWT] Client :> "users" :> Get '[JSON] [User]
 
-users :: [User]
-users = [User "foo"]
-
-usersGet :: ReaderT AppContext Handler [User]
-usersGet = do
+usersGet :: Client -> ReaderT AppContext Handler [User]
+usersGet client = do
     AppContext { .. } <- ask
     userNames <- liftIO $ PG.query_ dbConnection "SELECT NAME FROM users"
     pure $ map (User . PG.fromOnly) userNames
@@ -72,16 +70,23 @@ runAppHandler :: AppContext -> ReaderT AppContext m a -> m a
 runAppHandler = flip runReaderT
 
 server :: AppContext -> Server API
-server ctx = hoistServer serverAPI (runAppHandler ctx) server'
+server ctx = hoistServerWithContext serverAPI (Proxy :: Proxy '[JWTSettings, CookieSettings]) (runAppHandler ctx) server'
+
+-- servantCtx :: Proxy
+-- servantCtx = Proxy
 
 server' :: ServerT API (ReaderT AppContext Handler)
-server' = usersGet
+server' (Authenticated client) = usersGet client
+server' _ = throwError err401
 
 serverAPI :: Proxy API
 serverAPI = Proxy
 
-app :: AppContext -> Application
-app ctx = serve serverAPI (server ctx)
+app :: AppContext -> JWK -> Application
+app ctx jwk = serveWithContext serverAPI serverCtx (server ctx)
+    where serverCtx =
+            let jwtCfg = defaultJWTSettings jwk
+            in defaultCookieSettings :. jwtCfg :. EmptyContext
 
 main :: IO ()
 main = do
@@ -89,11 +94,12 @@ main = do
                 Right conf -> pure conf
                 Left err -> error err
     dbConn <- dbConnect config
-    tokenValidator <- TokenValidation.new (envConfigJwk config)
+    jwk <- decodeJWK (envConfigJwk config)
+    -- (tokenValidator, jwk) <- TokenValidation.newWithJwk (envConfigJwk config)
 
-    let ctx = AppContext { dbConnection = dbConn
-                         , tokenValidator = tokenValidator }
-    run 8080 (app ctx)
+    let ctx = AppContext { dbConnection = dbConn }
+                        --  , tokenValidator = tokenValidator }
+    run 8080 (app ctx jwk)
 
 dbConnect EnvConfig {..} =
     PG.connect PG.ConnectInfo { PG.connectHost = envConfigDbHost ^. unpacked

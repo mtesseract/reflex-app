@@ -22,6 +22,7 @@ executable backend
                     , RecordWildCards
                     , ScopedTypeVariables
                     , FlexibleContexts
+                    , DeriveGeneric
   other-modules:      TokenValidation
   -- other-extensions:
   build-depends:       base >=4.11 && <4.12
@@ -32,6 +33,7 @@ executable backend
                      , servant
                      , servant-server
                      , servant-auth
+                     , servant-auth-server
                      , wai
                      , warp
                      , aeson
