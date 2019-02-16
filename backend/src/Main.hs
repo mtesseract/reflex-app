@@ -16,26 +16,53 @@ import Network.Wai.Handler.Warp
 import Servant
 import Control.Monad.Reader
 import Data.Aeson
+import Data.Aeson.Types
+import Data.Aeson.Casing
+import Data.ByteString (ByteString)
+import qualified Data.ByteString as ByteString
 
-import Servant.Auth.Server
-import Web.JWT
+import qualified Data.ByteString.Lazy as LByteString
+
+import Control.Arrow ((>>>))
+import qualified Data.Text.Encoding as Text (encodeUtf8, decodeUtf8)
+import qualified Data.Text.Lazy.Encoding as LText (encodeUtf8, decodeUtf8)
+import qualified Data.Text.Lazy as LText (Text, fromStrict)
+
+import Servant.Auth
 
 import Common
 
-data Config = Config { dbHost :: Text, dbUsername :: Text, dbDatabase :: Text, dbPassword :: Text }
-    deriving (Generic, Show)
+import qualified TokenValidation
+import TokenValidation (TokenValidator)
 
-instance FromEnv Config where
-    fromEnv = Config <$> env "DB_HOST" <*> env "DB_USERNAME" <*> env "DB_DATABASE" <*> env "DB_PASSWORD"
+data EnvConfig = EnvConfig
+    { envConfigDbHost :: Text
+    , envConfigDbUsername :: Text
+    , envConfigDbDatabase :: Text
+    , envConfigDbPassword :: Text
+    , envConfigJwk :: Text
+    } deriving (Generic, Show)
 
-data AppContext = AppContext { dbConnection :: PG.Connection }
+instance FromEnv EnvConfig where
+    fromEnv = EnvConfig
+              <$> env "DB_HOST"
+              <*> env "DB_USERNAME"
+              <*> env "DB_DATABASE"
+              <*> env "DB_PASSWORD"
+              <*> env "JWK"
 
-type API = Auth [JWTAuth] () :>  "users" :> Get '[JSON] [User]
+data AppContext =
+    AppContext
+    { dbConnection :: PG.Connection
+    , tokenValidator :: TokenValidator IO
+    }
+
+type API = "users" :> Get '[JSON] [User]
 
 users :: [User]
 users = [User "foo"]
 
-usersGet :: AuthResult () -> ReaderT AppContext Handler [User]
+usersGet :: ReaderT AppContext Handler [User]
 usersGet = do
     AppContext { .. } <- ask
     userNames <- liftIO $ PG.query_ dbConnection "SELECT NAME FROM users"
@@ -62,12 +89,15 @@ main = do
                 Right conf -> pure conf
                 Left err -> error err
     dbConn <- dbConnect config
-    let ctx = AppContext { dbConnection = dbConn }
+    tokenValidator <- TokenValidation.new (envConfigJwk config)
+
+    let ctx = AppContext { dbConnection = dbConn
+                         , tokenValidator = tokenValidator }
     run 8080 (app ctx)
 
-dbConnect Config {..} =
-    PG.connect PG.ConnectInfo { PG.connectHost = dbHost ^. unpacked
+dbConnect EnvConfig {..} =
+    PG.connect PG.ConnectInfo { PG.connectHost = envConfigDbHost ^. unpacked
                    , PG.connectPort = 5432
-                   , PG.connectUser = dbUsername ^. unpacked
-                   , PG.connectPassword = dbPassword ^. unpacked
-                   , PG.connectDatabase = dbDatabase ^. unpacked }
+                   , PG.connectUser = envConfigDbUsername ^. unpacked
+                   , PG.connectPassword = envConfigDbPassword ^. unpacked
+                   , PG.connectDatabase = envConfigDbDatabase ^. unpacked }
