@@ -1,0 +1,46 @@
+name:                frontend-server
+version:             0.1.0.0
+-- synopsis:
+-- description:
+license:             BSD3
+license-file:        LICENSE
+author:              Moritz Clasmeier
+maintainer:          mtesseract@silverratio.net
+-- copyright:
+-- category:
+build-type:          Simple
+extra-source-files:  CHANGELOG.md
+cabal-version:       >=1.10
+
+executable backend
+  main-is:             Main.hs
+  default-extensions: OverloadedStrings
+                    , LambdaCase
+                    , RecordWildCards
+                    , ScopedTypeVariables
+                    , FlexibleContexts
+                    , DeriveGeneric
+  other-modules:      TokenValidation
+  -- other-extensions:
+  build-depends:       base >=4.11 && <4.12
+                     , common
+                     , bytestring
+                     , binary
+                     , envy
+                     , servant
+                     , servant-server
+                     , servant-auth
+                     , servant-auth-server
+                     , wai
+                     , warp
+                     , aeson
+                     , aeson-casing
+                     , text
+                     , katip
+                     , lens
+                     , mtl
+                     , jose
+                     , monad-time
+                     , exceptions
+  hs-source-dirs:      src
+  default-language:    Haskell2010

@@ -3,3 +3,4 @@ packages:
   common/
   backend/
   frontend/
+  frontend-server
