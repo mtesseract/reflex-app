@@ -7,6 +7,7 @@
     common = ./common;
     backend = ./backend;
     frontend = ./frontend;
+    frontend-server = ./frontend-server;
   };
 
   shells = {

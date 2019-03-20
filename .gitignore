@@ -3,3 +3,5 @@ result
 dist-newstyle
 .ghc.environment.*
 dist-ghcjs
+cabal.project.local
+*~

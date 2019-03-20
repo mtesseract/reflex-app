@@ -12,7 +12,7 @@ build-type:          Simple
 extra-source-files:  CHANGELOG.md
 cabal-version:       >=1.10
 
-executable backend
+executable frontend-server
   main-is:             Main.hs
   default-extensions: OverloadedStrings
                     , LambdaCase
@@ -32,6 +32,7 @@ executable backend
                      , servant-auth
                      , servant-auth-server
                      , wai
+                     , wai-app-static
                      , warp
                      , aeson
                      , aeson-casing
